@@ -13,14 +13,6 @@ int simple_read(const char *path, char *buf, size_t size, off_t offset,
 int simple_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                    off_t offset, struct fuse_file_info *fi);
 
-fuse_operations *get_fuse_operations() {
-  static struct fuse_operations simple_operations = {
-      .getattr = simple_getattr,
-      .open = simple_open,
-      .read = simple_read,
-      .readdir = simple_readdir,
-  };
-  return &simple_operations;
-}
+fuse_operations *get_fuse_operations();
 
 #endif /* FUSECOMMANDS_INCLUDE_MAIN */

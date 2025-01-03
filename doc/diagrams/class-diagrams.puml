@@ -1,0 +1,84 @@
+@startuml class-diagrams
+
+struct Chunk {
+		+ int NextChunkIndex
+		+ byte[ ] Data
+		+ write(byte[ ] data)
+		+ read(int size)
+}
+
+interface ChunkManager {
+		- Chunk[ ] activeChunks
+		- int[ ] chunkflags
+		+ write(byte[ ] data)
+		+ getChunk(int index)
+		+ writeChunk(int index, byte[ ] data)
+		+ allocateChunk()
+		+ dropChunk(int index)
+		+ flush()
+		- {abstract} loadChunk()
+		- {abstract} saveChunk()
+}
+
+class FileChunkManager extends ChunkManager {
+		- File File
+		- loadChunk()
+		- saveChunk()
+}
+
+class MemoryChunkManager extends ChunkManager {
+		- Chunk[ ] Chunks
+		- loadChunk()
+		- saveChunk()
+}
+
+class DeviceChunkManager extends ChunkManager {
+		- int DevideFileDescriptor
+		- loadChunk()
+		- saveChunk()
+}
+
+class ChunkIterator {
+		- ChunkService &service
+		- int index
+		+ write(byte[ ] data)
+		+ read(int size)
+}
+
+class ChunkService {
+		- ChunkManager[ ] managers
+		+ iterator(int index)
+}
+
+
+class FileService {
+		- File rootdir
+		+ loadrootdir()
+		+ saveRootDir()
+		+ getattr(string path)
+		+ readattr(string path)
+		+ open(string path)
+		+ read(string path, int size)
+		+ write(string path, byte[ ] data)
+		+ mkdir(string path)
+		+ rmdir(string path)
+		+ create(string path)
+}
+
+
+struct File {
+		+ bool isDirectory
+		+ string Path
+		+ int Size
+		+ int startChunkIndex
+		+ int permissions
+		+ int owner
+		+ int group
+		+ int lastAccessTime
+		+ int lastModificationTime
+		+ int lastChangeTime
+		+ int flags
+}
+
+
+@enduml

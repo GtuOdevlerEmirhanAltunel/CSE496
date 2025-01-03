@@ -1,7 +1,5 @@
 *.pptx
 *.pdf
-doc/diagrams/out/
 bin
 build
 lib
-
