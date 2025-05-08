@@ -1,12 +1,15 @@
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
 #include <chrono>
 #include <ctime>
 #include <deque>
 #include <iostream>
 #include <mutex>
 #include <opencv2/opencv.hpp>
+#include <sstream>
 #include <thread>
-
-#include "httplib.h"
 
 struct MotionDetection {
   std::string filename;
@@ -62,21 +65,56 @@ void motionDetectionLoop() {
 }
 
 void startHttpServer() {
-  httplib::Server svr;
+  int serverFd = socket(AF_INET, SOCK_STREAM, 0);
+  if (serverFd == -1) {
+    perror("socket");
+    return;
+  }
 
-  svr.Get("/detections", [](const httplib::Request&, httplib::Response& res) {
-    std::string body;
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(8080);
+  addr.sin_addr.s_addr = INADDR_ANY;
+
+  if (bind(serverFd, (sockaddr*)&addr, sizeof(addr)) < 0) {
+    perror("bind");
+    return;
+  }
+
+  if (listen(serverFd, 5) < 0) {
+    perror("listen");
+    return;
+  }
+
+  std::cout << "Serving on http://0.0.0.0:8080\n";
+
+  while (true) {
+    int clientFd = accept(serverFd, nullptr, nullptr);
+    if (clientFd < 0) {
+      perror("accept");
+      continue;
+    }
+
+    char buffer[1024] = {0};
+    read(clientFd, buffer, sizeof(buffer));
+
+    std::ostringstream body;
     {
       std::lock_guard<std::mutex> lock(detectionMutex);
-      for (const auto& det : recentDetections) {
-        body += det.timestamp + " - " + det.filename + "\n";
-      }
+      for (const auto& det : recentDetections)
+        body << det.timestamp << " - " << det.filename << "\n";
     }
-    res.set_content(body, "text/plain");
-  });
 
-  std::cout << "HTTP server on http://0.0.0.0:8080/detections\n";
-  svr.listen("0.0.0.0", 8080);
+    std::ostringstream response;
+    response << "HTTP/1.1 200 OK\r\n"
+             << "Content-Type: text/plain\r\n"
+             << "Content-Length: " << body.str().size() << "\r\n"
+             << "Connection: close\r\n\r\n"
+             << body.str();
+
+    send(clientFd, response.str().c_str(), response.str().size(), 0);
+    close(clientFd);
+  }
 }
 
 int main() {
