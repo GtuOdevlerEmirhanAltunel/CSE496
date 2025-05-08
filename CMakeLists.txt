@@ -3,7 +3,8 @@ project(MotionServerLite)
 
 set(CMAKE_CXX_STANDARD 17)
 
-find_package(OpenCV REQUIRED COMPONENTS core imgproc videoio)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc videoio highgui)
 
 add_executable(motion_detect motion_detect.cpp)
-target_link_libraries(motion_detect ${OpenCV_LIBS})
+target_link_libraries(motion_detect ${OpenCV_LIBS} pthread)
+
