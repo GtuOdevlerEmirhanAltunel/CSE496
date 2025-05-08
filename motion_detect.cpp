@@ -5,6 +5,7 @@
 #include <chrono>
 #include <ctime>
 #include <deque>
+#include <fstream>
 #include <iostream>
 #include <mutex>
 #include <opencv2/opencv.hpp>
@@ -98,21 +99,51 @@ void startHttpServer() {
     char buffer[1024] = {0};
     read(clientFd, buffer, sizeof(buffer));
 
-    std::ostringstream body;
-    {
-      std::lock_guard<std::mutex> lock(detectionMutex);
-      for (const auto& det : recentDetections)
-        body << det.timestamp << " - " << det.filename << "\n";
+    std::istringstream req(buffer);
+    std::string method, path;
+    req >> method >> path;
+
+    if (path.rfind("/image?name=", 0) == 0) {
+      std::string filename = path.substr(13);  // skip "/image?name="
+      std::ifstream file(filename, std::ios::binary);
+
+      if (file.good()) {
+        std::ostringstream content;
+        content << file.rdbuf();
+        std::string imgData = content.str();
+
+        std::ostringstream response;
+        response << "HTTP/1.1 200 OK\r\n"
+                 << "Content-Type: image/jpeg\r\n"
+                 << "Content-Length: " << imgData.size() << "\r\n"
+                 << "Connection: close\r\n\r\n";
+
+        send(clientFd, response.str().c_str(), response.str().size(), 0);
+        send(clientFd, imgData.c_str(), imgData.size(), 0);
+      } else {
+        const char* notFound =
+            "HTTP/1.1 404 Not Found\r\n\r\nImage not found\n";
+        send(clientFd, notFound, strlen(notFound), 0);
+      }
+    } else {
+      std::ostringstream body;
+      {
+        std::lock_guard<std::mutex> lock(detectionMutex);
+        for (const auto& det : recentDetections)
+          body << det.timestamp << " - " << det.filename
+               << " [GET /image?name=" << det.filename << "]\n";
+      }
+
+      std::ostringstream response;
+      response << "HTTP/1.1 200 OK\r\n"
+               << "Content-Type: text/plain\r\n"
+               << "Content-Length: " << body.str().size() << "\r\n"
+               << "Connection: close\r\n\r\n"
+               << body.str();
+
+      send(clientFd, response.str().c_str(), response.str().size(), 0);
     }
 
-    std::ostringstream response;
-    response << "HTTP/1.1 200 OK\r\n"
-             << "Content-Type: text/plain\r\n"
-             << "Content-Length: " << body.str().size() << "\r\n"
-             << "Connection: close\r\n\r\n"
-             << body.str();
-
-    send(clientFd, response.str().c_str(), response.str().size(), 0);
     close(clientFd);
   }
 }
