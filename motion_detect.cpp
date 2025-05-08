@@ -104,7 +104,7 @@ void startHttpServer() {
     req >> method >> path;
 
     if (path.rfind("/image?name=", 0) == 0) {
-      std::string filename = path.substr(13);  // skip "/image?name="
+      std::string filename = path.substr(12);  // skip "/image?name="
       std::ifstream file(filename, std::ios::binary);
 
       if (file.good()) {
@@ -123,6 +123,7 @@ void startHttpServer() {
       } else {
         const char* notFound =
             "HTTP/1.1 404 Not Found\r\n\r\nImage not found\n";
+        std::cerr << "Image not found: " << filename << "\n";
         send(clientFd, notFound, strlen(notFound), 0);
       }
     } else {
