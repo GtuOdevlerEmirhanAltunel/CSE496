@@ -9,7 +9,7 @@ add_executable(motion_detect
 	handleHttpClient.cpp
 	motion_detect.cpp
 	motionDetectionLoop.cpp
-	sanitizeFileName.cpp
+	sanitizeFilename.cpp
 	startHttpServer.cpp
 )
 target_link_libraries(motion_detect ${OpenCV_LIBS} pthread)
